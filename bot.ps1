@@ -641,7 +641,7 @@ function Format-ToolCallSummary($tc) {
     try {
         $argsObj = $argsRaw | ConvertFrom-Json
         if ($argsObj.Path) { $detail = " -> $($argsObj.Path)" }
-        elseif ($argsObj.CommandLine) { $detail = " -> `$($argsObj.CommandLine)`" }
+        elseif ($argsObj.CommandLine) { $detail = " -> $($argsObj.CommandLine)" }
         elseif ($argsObj.query) { $detail = " -> $($argsObj.query)" }
         elseif ($argsObj.toolSummary) { $detail = " ($($argsObj.toolSummary))" }
     } catch {}
