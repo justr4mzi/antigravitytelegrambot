@@ -61,6 +61,23 @@ $EMOJI_WARN   = U 0x26A0
 $EMOJI_SPARK  = U 0x2728
 $EMOJI_TOOL   = U 0x1F527
 $EMOJI_BOLT   = U 0x26A1
+$EMOJI_BRAIN  = U 0x1F9E0
+
+# --- Single Instance Check (kill old instance if restarting) ---
+$PidFile = Join-Path $BotDir "bot.pid"
+if (Test-Path $PidFile) {
+    try {
+        $oldPid = [int](Get-Content $PidFile -Raw).Trim()
+        if ($oldPid -ne $PID) {
+            $oldProc = Get-Process -Id $oldPid -ErrorAction SilentlyContinue
+            if ($oldProc -and $oldProc.ProcessName -match "powershell|pwsh") {
+                Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Milliseconds 500
+            }
+        }
+    } catch {}
+}
+$PID | Set-Content $PidFile -Encoding ASCII
 
 $defaultWsDir = Join-Path $env:USERPROFILE ".gemini\antigravity\scratch"
 if (-not (Test-Path $defaultWsDir)) { $defaultWsDir = $env:USERPROFILE }
@@ -605,7 +622,7 @@ function Start-NewAntigravityConversation([long]$chatId, [string]$initialPrompt 
     }
 }
 
-# --- Watcher State for Live Streaming of Responses ---
+# --- Watcher State for Live Streaming of Thinking, Tools & Full Responses ---
 $watchState = @{
     active          = $false
     cascadeId       = ""
@@ -614,9 +631,22 @@ $watchState = @{
     lastStatusText  = ""
     idleTicks       = 0
     startedAt       = [DateTime]::Now
+    sentItems       = @{}
 }
 
-$deliveredSteps = @{}
+function Format-ToolCallSummary($tc) {
+    $name = [string]$tc.name
+    $argsRaw = [string]$tc.argumentsJson
+    $detail = ""
+    try {
+        $argsObj = $argsRaw | ConvertFrom-Json
+        if ($argsObj.Path) { $detail = " -> $($argsObj.Path)" }
+        elseif ($argsObj.CommandLine) { $detail = " -> `$($argsObj.CommandLine)`" }
+        elseif ($argsObj.query) { $detail = " -> $($argsObj.query)" }
+        elseif ($argsObj.toolSummary) { $detail = " ($($argsObj.toolSummary))" }
+    } catch {}
+    return "$EMOJI_TOOL Outil : $name$detail"
+}
 
 function Send-PromptToAntigravity([long]$chatId, [string]$promptText) {
     try {
@@ -667,6 +697,7 @@ function Send-PromptToAntigravity([long]$chatId, [string]$promptText) {
         $watchState.lastStatusText  = $statusText
         $watchState.idleTicks       = 0
         $watchState.startedAt       = [DateTime]::Now
+        $watchState.sentItems       = @{}
     } catch {
         Send-TgMessage $chatId "$EMOJI_WARN Erreur lors de l'envoi a Antigravity : $($_.Exception.Message)" | Out-Null
     }
@@ -691,8 +722,13 @@ function Step-Watcher([long]$chatId) {
         $steps = if ($stepsRes -and $stepsRes.steps) { @($stepsRes.steps) } else { @() }
 
         $activityDesc = "Reflexion en cours..."
-        foreach ($s in $steps) {
+        for ($i = 0; $i -lt $steps.Count; $i++) {
+            $s = $steps[$i]
+            $absIdx = $offset + $i
             $t = [string]$s.type
+            $st = [string]$s.status
+            $isStepFinished = ($st -ne "CORTEX_STEP_STATUS_GENERATING" -and $st -ne "CORTEX_STEP_STATUS_RUNNING" -and $st -ne "CORTEX_STEP_STATUS_PENDING")
+
             if ($t -eq "CORTEX_STEP_TYPE_RUN_COMMAND") {
                 $activityDesc = "$EMOJI_TOOL Execution d'une commande..."
             } elseif ($t -eq "CORTEX_STEP_TYPE_READ_FILE" -or $t -eq "CORTEX_STEP_TYPE_VIEW_FILE") {
@@ -700,8 +736,45 @@ function Step-Watcher([long]$chatId) {
             } elseif ($t -eq "CORTEX_STEP_TYPE_EDIT_FILE" -or $t -eq "CORTEX_STEP_TYPE_WRITE_FILE" -or $t -eq "CORTEX_STEP_TYPE_CODE_ACTION") {
                 $activityDesc = "$EMOJI_SPARK Modification du code..."
             } elseif ($t -eq "CORTEX_STEP_TYPE_PLANNER_RESPONSE") {
-                if ($s.status -eq "CORTEX_STEP_STATUS_GENERATING") {
-                    $activityDesc = "$EMOJI_CHAT Redaction de la reponse..."
+                if (-not $isStepFinished) {
+                    $activityDesc = "$EMOJI_BRAIN Reflexion / Redaction en cours..."
+                } else {
+                    # 1. Send Thinking if present and not yet sent
+                    $thinkKey = "think_$absIdx"
+                    if ($s.plannerResponse -and -not [string]::IsNullOrWhiteSpace($s.plannerResponse.thinking) -and -not $watchState.sentItems.ContainsKey($thinkKey)) {
+                        $watchState.sentItems[$thinkKey] = $true
+                        $thinkText = Format-MarkdownToCleanText ([string]$s.plannerResponse.thinking).Trim()
+                        Send-TgMessage $chatId "$EMOJI_BRAIN Reflexion (Etape $absIdx) :`n`n$thinkText" | Out-Null
+                    }
+
+                    # 2. Send Tool Calls if present and not yet sent
+                    $toolsKey = "tools_$absIdx"
+                    if ($s.plannerResponse -and $s.plannerResponse.toolCalls -and $s.plannerResponse.toolCalls.Count -gt 0 -and -not $watchState.sentItems.ContainsKey($toolsKey)) {
+                        $watchState.sentItems[$toolsKey] = $true
+                        $toolLines = @()
+                        foreach ($tc in $s.plannerResponse.toolCalls) {
+                            $toolLines += (Format-ToolCallSummary $tc)
+                        }
+                        Send-TgMessage $chatId ($toolLines -join "`n") | Out-Null
+                    }
+
+                    # 3. Send Full Planner Response if present and not yet sent
+                    $respKey = "resp_$absIdx"
+                    if ($s.plannerResponse -and -not [string]::IsNullOrWhiteSpace($s.plannerResponse.response) -and -not $watchState.sentItems.ContainsKey($respKey)) {
+                        $watchState.sentItems[$respKey] = $true
+                        $rawMd = [string]$s.plannerResponse.response
+                        $cleanText = Format-MarkdownToCleanText $rawMd
+                        Send-TgMessage $chatId "$EMOJI_ROBOT Reponse d'Antigravity :`n`n$cleanText" | Out-Null
+
+                        $imgs = Extract-LocalImagesFromMarkdown $rawMd
+                        $imgCount = 0
+                        foreach ($imgPath in $imgs) {
+                            if ($imgCount -lt 5) {
+                                Send-TgPhoto $chatId $imgPath ([System.IO.Path]::GetFileName($imgPath))
+                                $imgCount++
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -732,34 +805,19 @@ function Step-Watcher([long]$chatId) {
             }
             if ($watchState.idleTicks -ge 2) {
                 $watchState.active = $false
-                $responses = @()
-                foreach ($s in $steps) {
-                    if ($s.type -eq "CORTEX_STEP_TYPE_PLANNER_RESPONSE" -and $s.plannerResponse -and $s.plannerResponse.response) {
-                        $responses += [string]$s.plannerResponse.response
-                    }
-                }
                 if ($watchState.statusMessageId -gt 0) {
                     Edit-TgMessage $chatId $watchState.statusMessageId "$EMOJI_CHECK Termine en ${elapsed}s ($($c.stepCount) etapes)." | Out-Null
                 }
-                if ($responses.Count -gt 0) {
-                    $finalMd = $responses[-1]
-                    $cleanText = Format-MarkdownToCleanText $finalMd
-                    Send-TgMessage $chatId "$EMOJI_ROBOT Reponse d'Antigravity :`n`n$cleanText" | Out-Null
-
-                    $imgs = Extract-LocalImagesFromMarkdown $finalMd
-                    $imgCount = 0
-                    foreach ($imgPath in $imgs) {
-                        if ($imgCount -lt 5) {
-                            Send-TgPhoto $chatId $imgPath ([System.IO.Path]::GetFileName($imgPath))
-                            $imgCount++
-                        }
-                    }
-                } else {
+                # Fallback if no response was sent during streaming
+                $anyRespSent = $false
+                foreach ($k in $watchState.sentItems.Keys) {
+                    if ($k -like "resp_*") { $anyRespSent = $true; break }
+                }
+                if (-not $anyRespSent) {
                     $fallback = Get-LastAssistantResponse $watchState.cascadeId
                     $cleanFallback = Format-MarkdownToCleanText $fallback
                     Send-TgMessage $chatId "$EMOJI_ROBOT Reponse d'Antigravity :`n`n$cleanFallback" | Out-Null
                 }
-                $deliveredSteps[$watchState.cascadeId] = $c.stepCount
             }
         }
     } catch {
@@ -832,10 +890,7 @@ while ($true) {
                         $sel = $convs | Where-Object { $_.cascadeId -eq $newCid } | Select-Object -First 1
                         $title = if ($sel) { $sel.summary } else { $newCid }
                         $lastMsg = Format-MarkdownToCleanText (Get-LastAssistantResponse $newCid)
-                        if ($lastMsg.Length -gt 1200) {
-                            $lastMsg = $lastMsg.Substring(0, 1200) + "`n...[tronque]"
-                        }
-                        Send-TgMessage $cbChatId "$EMOJI_CHECK Conversation activee :`n$title`n`n--- Dernier message ---`n$lastMsg" | Out-Null
+                        Send-TgMessage $cbChatId "$EMOJI_CHECK Conversation activee :`n$title`n`n--- Dernier message complet ---`n$lastMsg" | Out-Null
                     }
                     elseif ($cbData -like "model:*") {
                         $newModel = $cbData.Substring(6)
