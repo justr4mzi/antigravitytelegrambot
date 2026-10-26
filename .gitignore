@@ -1,0 +1,6 @@
+# Fichier de configuration contenant le Token Telegram personnel
+config.json
+
+# Dossier des fichiers et vocaux recus depuis Telegram
+uploads/
+*.log

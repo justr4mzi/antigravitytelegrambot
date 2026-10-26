@@ -1,0 +1,231 @@
+﻿{
+    "plannerConfig":  {
+                          "declarativeMixinConfig":  {
+                                                         "promptSections":  [
+                                                                                {
+                                                                                    "builtinName":  "identity"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "terminal_sandbox"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "artifacts"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "conversation_transcript"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "guidelines"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "communication_style"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "slash_commands"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "messaging"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "mcp_servers"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "subagents"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "user_rules"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "skills"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "featured_plugins"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "user_information"
+                                                                                },
+                                                                                {
+                                                                                    "builtinName":  "subagent_reminder"
+                                                                                }
+                                                                            ],
+                                                         "tools":  [
+                                                                       {
+                                                                           "name":  "read_file",
+                                                                           "builtin":  true
+                                                                       },
+                                                                       {
+                                                                           "name":  "rewrite_run_command",
+                                                                           "builtin":  true
+                                                                       },
+                                                                       {
+                                                                           "name":  "rewrite_manage_task",
+                                                                           "builtin":  true
+                                                                       },
+                                                                       {
+                                                                           "name":  "rewrite_send_message",
+                                                                           "builtin":  true
+                                                                       },
+                                                                       {
+                                                                           "name":  "rewrite_schedule",
+                                                                           "builtin":  true
+                                                                       },
+                                                                       {
+                                                                           "name":  "rewrite_invoke_subagent",
+                                                                           "builtin":  true
+                                                                       },
+                                                                       {
+                                                                           "name":  "rewrite_define_subagent",
+                                                                           "builtin":  true
+                                                                       },
+                                                                       {
+                                                                           "name":  "rewrite_manage_subagents",
+                                                                           "builtin":  true
+                                                                       },
+                                                                       {
+                                                                           "name":  "write_file",
+                                                                           "builtin":  true
+                                                                       },
+                                                                       {
+                                                                           "name":  "edit_file",
+                                                                           "builtin":  true
+                                                                       },
+                                                                       {
+                                                                           "name":  "rewrite_search_web",
+                                                                           "builtin":  true
+                                                                       },
+                                                                       {
+                                                                           "name":  "search_marketplace",
+                                                                           "builtin":  true
+                                                                       },
+                                                                       {
+                                                                           "name":  "ask_question",
+                                                                           "builtin":  true
+                                                                       }
+                                                                   ],
+                                                         "preInvocationHooks":  [
+                                                                                    {
+                                                                                        "name":  "message_delivery",
+                                                                                        "builtin":  true
+                                                                                    },
+                                                                                    {
+                                                                                        "name":  "context_summary",
+                                                                                        "builtin":  true
+                                                                                    }
+                                                                                ],
+                                                         "postInvocationHooks":  [
+                                                                                     {
+                                                                                         "name":  "command_assessor",
+                                                                                         "builtin":  true
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "message_continue_check",
+                                                                                         "builtin":  true
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "terminal_step_check",
+                                                                                         "builtin":  true
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "max_generator_invocations_check",
+                                                                                         "builtin":  true
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "empty_output_continuation_check",
+                                                                                         "builtin":  true
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "force_invocation",
+                                                                                         "builtin":  true
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "no_tool_call_check",
+                                                                                         "builtin":  true
+                                                                                     }
+                                                                                 ],
+                                                         "preToolHooks":  [
+                                                                              {
+                                                                                  "name":  "battle_mode_tool_args",
+                                                                                  "builtin":  true
+                                                                              },
+                                                                              {
+                                                                                  "name":  "command_assessor",
+                                                                                  "builtin":  true
+                                                                              },
+                                                                              {
+                                                                                  "name":  "timeout_long_running_search_command",
+                                                                                  "builtin":  true
+                                                                              },
+                                                                              {
+                                                                                  "name":  "auto_run_safety_gate",
+                                                                                  "builtin":  true
+                                                                              }
+                                                                          ],
+                                                         "postToolHooks":  [
+                                                                               {
+                                                                                   "name":  "command_assessor",
+                                                                                   "builtin":  true
+                                                                               }
+                                                                           ],
+                                                         "stopHooks":  [
+                                                                           {
+                                                                               "name":  "goal_stop",
+                                                                               "builtin":  true
+                                                                           },
+                                                                           {
+                                                                               "name":  "idle_subagent_guard",
+                                                                               "builtin":  true
+                                                                           }
+                                                                       ],
+                                                         "toolDecorators":  [
+                                                                                {
+                                                                                    "name":  "output_truncation",
+                                                                                    "builtin":  true
+                                                                                }
+                                                                            ],
+                                                         "forceDisableFundamentalComponents":  true
+                                                     },
+                          "customizationDiscoveryConfig":  {
+                                                               "skills":  {
+                                                                              "builtinSkillNames":  [
+                                                                                                        "agy-customizations",
+                                                                                                        "antigravity_guide",
+                                                                                                        "automation",
+                                                                                                        "generative_ui",
+                                                                                                        "migrate-workflows",
+                                                                                                        "plugin",
+                                                                                                        "ui-plugin-navigation"
+                                                                                                    ]
+                                                                          },
+                                                               "agents":  {
+                                                                              "builtinAgentNames":  [
+                                                                                                        "self",
+                                                                                                        "research",
+                                                                                                        "browser",
+                                                                                                        "teamwork_preview",
+                                                                                                        "DeepCoder",
+                                                                                                        "DeepInvestigator",
+                                                                                                        "image-generator"
+                                                                                                    ]
+                                                                          }
+                                                           },
+                          "toolConfig":  {
+                                             "runCommand":  {
+                                                                "autoCommandConfig":  {
+                                                                                          "autoExecutionPolicy":  "CASCADE_COMMANDS_AUTO_EXECUTION_EAGER"
+                                                                                      }
+                                                            },
+                                             "notifyUser":  {
+
+                                                            }
+                                         },
+                          "planModel":  "MODEL_PLACEHOLDER_M418",
+                          "useAiCredits":  false,
+                          "supportsLatexRendering":  true
+                      },
+    "executorConfig":  {
+                           "useCoreDirect":  true
+                       },
+    "conversationHistoryConfig":  {
+
+                                  }
+}
